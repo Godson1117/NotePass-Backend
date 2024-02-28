@@ -15,7 +15,7 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
 
 
 app.get('/', (req, res) => {
-    req.json({ message: 'NotePass API' })
+    res.json({ message: 'NotePass API' })
 })
 
 app.use('/auth', require('../routes/auth'))
