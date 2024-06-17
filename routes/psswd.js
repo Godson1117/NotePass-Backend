@@ -1,28 +1,27 @@
 const router = require("express").Router()
-const crypto = require('crypto-js')
+const cryptoJs = require('crypto-js')
 const Password = require('../models/Password')
 const verifyUser = require('../midlewares/verifyUser')
 
 router.get('/fetchpasswords', verifyUser, async (req, res) => {
-
    const decdata = []
    try {
       const data = await Password.find({ userid: req.user.id }).select({ userid: 0 })
       data.forEach((item) => {
-         let password = crypto.AES.decrypt(item.password, process.env.ENCKEY).toString(crypto.enc.Utf8)
+         let password = cryptoJs.AES.decrypt(item.password, process.env.ENCKEY).toString(cryptoJs.enc.Utf8)
          decdata.push({ id: item._id, date: item.date, sitename: item.sitename, sitelink: item.sitelink, password: password })
       })
       res.json(decdata)
    }
    catch (e) {
+      console.log(e)
       res.json({ message: "An error occured while fetching passwords..." })
    }
 })
 
 router.post('/storepassword', verifyUser, async (req, res) => {
-
    try {
-      let encPass = crypto.AES.encrypt(req.body.password, process.env.ENCKEY)
+      let encPass = cryptoJs.AES.encrypt(req.body.password, process.env.ENCKEY).toString()
       await Password.create({
          date: new Date(),
          userid: req.user.id,
@@ -33,19 +32,20 @@ router.post('/storepassword', verifyUser, async (req, res) => {
       res.json({ success: true, message: "Password succesfully stored" })
    }
    catch (e) {
+      console.log(e)
       res.json({ success: false, message: "Internal Server Error...Password not stored" })
    }
 })
 
 router.put('/updatepassword/:id', verifyUser, async (req, res) => {
    try {
-      const newPass = crypto.AES.encrypt(req.body.password, process.env.ENCKEY)
+      const newPass = cryptoJs.AES.encrypt(req.body.password, process.env.ENCKEY)
       let updatedData = {}
       updatedData.sitename = req.body.sitename
       updatedData.sitelink = req.body.sitelink
       updatedData.date = new Date()
       updatedData.password = newPass.toString()
-      updatedData = await Password.findByIdAndUpdate(req.params.id, { $set: updatedData }, { new: true })
+      await Password.findByIdAndUpdate(req.params.id, { $set: updatedData })
       res.json(updatedData)
    }
    catch (e) {
@@ -60,6 +60,7 @@ router.delete('/deletepassword/:id', verifyUser, async (req, res) => {
       res.json({ message: "Successfully deleted the password" })
    }
    catch (e) {
+      console.log(e)
       res.json({ message: "Internal server error...can't delete the password" })
    }
 })

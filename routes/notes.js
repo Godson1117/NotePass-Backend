@@ -1,32 +1,25 @@
 const router = require("express").Router()
 const multer = require('multer')
+const cloudinary = require('cloudinary').v2
+const { CloudinaryStorage } = require('multer-storage-cloudinary')
 const fs = require('fs')
 const Note = require('../models/Note')
 const verifyUser = require('../midlewares/verifyUser')
 
-const multerStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "public")
-    },
-    filename: (req, file, cb) => {
-        const ext = file.mimetype.split("/")[1]
-        cb(null, `${file.fieldname}-${Date.now()}.${ext}`)
-    },
+cloudinary.config({
+    cloud_name: 'dwol08atj',
+    api_key: '692224667164546',
+    api_secret: 'pIeYCbjeJSKWDKxtXfvAl_LqeBQ'
 });
 
-const multerFilter = (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|pdf/
-    let mimetype = filetypes.test(file.mimetype)
-    if (mimetype)
-        return cb(null, true)
-    else
-        cb('File format not supported', false)
-}
-
-const upload = multer({
-    storage: multerStorage,
-    fileFilter: multerFilter,
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'attachements'
+    }
 })
+
+const upload = multer({ storage: storage })
 
 router.get('/fetchnotes', verifyUser, async (req, res) => {
 
@@ -35,6 +28,7 @@ router.get('/fetchnotes', verifyUser, async (req, res) => {
         res.json(data)
     }
     catch (e) {
+        console.log(e)
         res.json({ message: "An error occured while fetching notes..." })
     }
 })
@@ -46,12 +40,14 @@ router.post('/storenote', verifyUser, upload.single('myfile'), async (req, res) 
             userid: req.user.id,
             title: req.body.title,
             description: req.body.description,
-            attachement: req.file == undefined ? '' : req.file.filename
+            attachement: req.file == undefined ? '' : req.file.path
         })
+        console.log(req.file)
         res.json({ success: true, message: "Note succesfully stored" })
     }
 
     catch (e) {
+        console.log(e)
         res.json({ success: false, message: "Internal Server Error...Note not stored" })
     }
 })
@@ -61,8 +57,7 @@ router.put('/updatenote/:id', verifyUser, upload.single('myfile'), async (req, r
         let updatedData = {}
         updatedData.title = req.body.title
         updatedData.description = req.body.description
-        if (req.file != undefined)
-            updatedData.attachement = req.file.filename
+        req.file != undefined ? updatedData.attachement = req.file.path : updatedData.attachement = ''
         updatedData.date = new Date().toDateString()
         await Note.findByIdAndUpdate(req.params.id, { $set: updatedData })
         res.json(updatedData)
@@ -81,8 +76,10 @@ router.delete('/deletenote/:id', verifyUser, async (req, res) => {
         res.json({ message: "Successfully deleted the note" })
     }
     catch (e) {
+        console.log(e)
         res.json({ message: "Internal server error...can't delete the note" })
     }
 })
+
 
 module.exports = router
